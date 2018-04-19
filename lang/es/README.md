@@ -57,6 +57,8 @@ store.actions.loadingSwitch();
 
 ### Ejemplo
 
+> fuera de este ejemplo puede jugar con uno existente en [jsfiddle](https://jsfiddle.net/uppercod/3hvru6ex/340/).
+
 ```js
 import Store from "kubox";
 
