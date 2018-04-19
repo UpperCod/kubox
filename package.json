@@ -1,6 +1,6 @@
 {
   "name": "kubox",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "description": "state management solution for Javascript applications",
   "main": "build/cjs.js",
   "module": "build/cjs.js",
@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/UpperCod/box-store.git"
+    "url": "https://github.com/UpperCod/kubox.git"
   },
   "dependencies": {
     "preact": "^8.2.7"
