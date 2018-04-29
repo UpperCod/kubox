@@ -47,7 +47,7 @@ The store instance defines the following properties:
 
 It is an object that groups all actions, this is scanned regardless of its depth at the time of instantiation of the store, to define all actions within the store.
 
-### Ejemplo actions
+### Example of actions
 
 #### file actions.js
 
@@ -103,7 +103,7 @@ If you define an action in the root whose property name is **middleware**, this 
 
 In this way the middleware controls any change that points to the store from an action, this type of action is ideal for debug the store.
 
-### Flujo de Kubox.
+### Kubox flow.
 
 ![kubox flow](img/flow-min.png)
 
