@@ -1,6 +1,6 @@
 {
   "name": "kubox",
-  "version": "0.0.7",
+  "version": "0.0.9",
   "description": "state management solution for Javascript applications",
   "main": "build/cjs.js",
   "module": "build/cjs.js",
@@ -13,8 +13,7 @@
   "devDependencies": {
     "jest": "^20.0.4",
     "rollup": "^0.45.2",
-    "rollup-plugin-buble": "^0.19.2",
-    "rollup-watch": "^4.3.1"
+    "rollup-plugin-buble": "^0.19.2"
   },
   "repository": {
     "type": "git",

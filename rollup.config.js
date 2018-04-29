@@ -20,7 +20,6 @@ export default {
             name: NAME
         }
     ],
-    sourceMap: false,
     plugins: [
         buble({
             jsx: "h",
