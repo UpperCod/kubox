@@ -4,22 +4,18 @@ export default {
     input: "src/index.js",
     output: [
         {
-            file: "build/kubox.js",
+            file: "dist/iife.js",
             format: "iife",
-            name: "Kubox"
+            name: "KuboxPreact"
         },
         {
-            file: "build/kubox.umd.js",
+            file: "dist/umd.js",
             format: "umd",
-            name: "Kubox"
+            name: "KuboxPreact"
         },
         {
-            file: "build/kubox.cjs.js",
+            file: "dist/cjs.js",
             format: "cjs"
-        },
-        {
-            file: "build/kubox.es.js",
-            format: "es"
         }
     ],
     sourceMap: true,
