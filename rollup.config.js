@@ -1,28 +1,35 @@
 import buble from "rollup-plugin-buble";
 
-const NAME = "Kubox";
-
 export default {
     input: "src/index.js",
     output: [
         {
-            file: "build/umd.js",
-            format: "umd",
-            name: NAME
+            file: "build/kubox.js",
+            format: "iife",
+            name: "Kubox"
         },
         {
-            file: "build/cjs.js",
+            file: "build/kubox.umd.js",
+            format: "umd",
+            name: "Kubox"
+        },
+        {
+            file: "build/kubox.cjs.js",
             format: "cjs"
         },
         {
-            file: "build/iife.js",
-            format: "iife",
-            name: NAME
+            file: "build/kubox.es.js",
+            format: "es"
         }
     ],
+    sourceMap: true,
+    external: ["preact"],
+    watch: {
+        chokidar: {},
+        exclude: ["node_modules/**"]
+    },
     plugins: [
         buble({
-            jsx: "h",
             objectAssign: "Object.assign"
         })
     ]

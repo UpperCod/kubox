@@ -1,118 +1,111 @@
-## Kubox
+# Kubox
 
-Kubox  administra el estado a base de acciones con contexto y manejo de asincronía fácilmente debuggable
+Es una pequeña herramienta creada para controlar el estado dentro de aplicaciones, sin aumentar la complejidad ofreciendo una cobertura tanto síncrona como asíncrona en tan solo **540 bytes gzip**
+
+## Introducción
+
+### ¿Que es el estado?
+
+El estado es un objeto, este posee la situación actual de lo que se desea observar, por ejemplo las interacciones de una aplicación.
+
+### ¿Que es el store?
+
+El store es la instancia de **kubox** esta enlaza el estado con los suscriptores y acciones.
 
 
-## Action.
+### ¿Que es una acción?
 
-el action es el único que puede modificar el estado, mediante el primer argumento recibido, este argumento posee 2 métodos :
+Para comenzar a trabajar con kubox, debe comprender bien el concepto de **action**.
 
-* **set** : permite editar, crear un nuevo estado y notificar a los suscriptores de dicho cambio.
-* **get** : permite obtener el estado actual.
+Una acción es una función que permite cambiar u obtener el estado del store, esta interacción puede ser sincrona o asincrona.
 
-### Ejemplo de un action.
+Toda acción recibe como mínimo un argumento, el **primer parámetro lo define el store**, y le entrega a la acción en un objeto la capacidad ya comentada de modificar u obtener el estado mediante 2 funciones:
 
-```js
-export default function(state){
-   let before = state.get(); // {}
-              state.set({hello:"Kubox"});
-   let after = state.get(); // {hello:"kubox"}
+* **set** : modifica el estado.
+* **get** : obtiene el estado.
+
+```javascript
+function action({set,get}){
+   set({state:"sync change"});
+
+   setTimeout(()=>{
+       set({state:"async change"})
+   })
 }
 ```
-> el Action es libre de responder a la vista con lo que estime conveniente, pero única forma de modificar u obtener el estado es mediante  los métodos **set** y **get** del primer argumento entregado al Action.
 
-## Store(object state, object actions)
+### ¿Que es el middleware?
 
-La instancia del **store**, requiere 2 argumentos:
+El middleware es solo una función que permite interceder los cambios enviados por las acciones.
+
+
+
+
+## Métodos y propiedades
+
+### Store([object state, object actions, function middleware])
+
+La instancia del **Store**, puede recibir hasta 3 argumentos
 
 1. **state** : *{object}*, estado inicial para el store.
 2. **actions** : *{object}*, acciones modificadoras del estado.
+2. **middleware** : *{function}*, controla los cambios provocados por las acciones
 
-```js
+
+``` javascript
 import Store from "kubox";
-import state from "./state";
-import actions from "./actions";
 
-export default new Store(state,actions);
-```
-
-La instancia del store define las siguientes propiedades:
-
-* **state** : *{object}*, contiene el estado actual del store.
-* **actions** : *{object}*, contiene las acciones asignadas al store.
-* **subscribers** : *{object}*, contiene los  suscriptores a los cambios del estado dentro del store.
-* **subscribe** : *{function}*, permite registrar un suscriptor al store, este a su vez retorna una función para eliminar el registro como suscriptor.
-
-### Actions
-
-Es un objeto que agrupa todas las acciones, este es escaneado sin importar su profundidad al momento de instanciar el store,para definir todos los actions dentro del store.
-
-
-### Ejemplo actions
-
-#### file actions.js
-
-```js
-
-function increment(state){
-   state.set(
-       (state.get()||0)+1
-   );
+let state = {
+   task : []
 }
 
-function decrement(state){
-   state.set(
-       (state.get()||0)-1
-   );
-}
-
-function replace(state,count){
-   state.set(count);
-}
-
-export default {
-   count : {
-       increment,
-       decrement,
-       replace,
+let actions = {
+   task : {
+       create({set,get},value){
+           set(
+               get().concat(value)
+           );
+       },
+       remove({set,get},index){
+           set(
+               get().filter((value,indexSearch)=>indexSearch !== index)
+           );
+       }
    }
 }
+
+let store = new Store(state,actions);
+
+store.actions.createTask("hello!");
+
+store.state.task // ["hello!"];
+
 ```
+> Favor note que las acciones se encuentran anidadas en una propiedad esta propiedad **task** esta será el **space**, esto quiere decir que las acciones solo verán y modifican el estado desde la propiedad space.
 
-#### file store.js
+> El store de forma arbitraria define los nombres de las acciones a registrar usando el patrón **camel case**, anteponiendo el nombre de la función al origen de la propiedad.
 
-La instancia de store define los actions dentro de la propiedad de la instancia `store.actions`, mediante el tipeo camelCase generará los siguientes nombres de actions.
+La instancia del **Store** retorna las siguientes propiedades
 
-```js
-import actions from "./actions";
+* **state** : {object}, estado del store.
+* **actions** : {object}, acciones registradas en el store.
+* **handlers** : {object}, agrupación de suscriptores.
+* **setActions** : {function}, crea o modifica acciones al store.
+* **subscribe** : {function}, añade un suscriptor al store
 
-let store =  new Store({},actions);
+### setActions( object actions [, function middleware, string space])
 
-store.actions.countIncrement() // store.state {count:1}
-store.actions.countDecrement() // store.state {count:0}
-store.actions.countReplace(10) // store.state {count:10}
-```
+Esta función crear o modificar acciones en el store, recibe 3 argumentos :
 
-> Cualquier cambio que produce **count Increment**, **count Decrement** y **count Replace**, quedara contenido en la propiedad del estado **count**.
+* **actions** : {object}, grupo de funciones a definir como acciones dentro del store
+* **middleware** : [function], función a interceder los cambios generados por las acciones
+* **space** : [string], nombre de espacio para las acciones.
 
-### action middleware
+### subscribe( function handler[, string  space]) : function unsubscribe
 
-Si ud define un action en la raíz cuyo nombre de propiedad sea **middleware**, este action recibirá todas las ejecuciones de los demás **actions** recibiendo los siguientes argumentos adicionales al control de estado:
+Esta función añade suscriptores al store, recibe 2 argumentos:
 
-* **action** : *{string}*, nombre del action que lanza el cambio.
-* **updater** : *{any}*, cambio lanzado por el action.
+* **handler** : {function}, función que se le notificarán los cambios
+* **space** : [string], string que permite suscribirse solo a los cambios generados por acciones vinculadas al **space**
 
-De esta forma el middleware controla cualquier cambio que apunta hacia el store desde un action, este tipo de acción es ideal para debug del store.
-
-### Resumen de flujo de Kubox.
-
-![kubox flow](../../img/flow-min.png)
-
-### subscribe(function handler[, string watch ])
-
-Ud puede registrar en los cambios de todo el estado o apuntar a ciertos propiedades de el.
-
-El subscriber será notificado siempre que se envíe desde **set**.
-
-
-
+## Ejemplos
