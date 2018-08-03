@@ -1,4 +1,4 @@
-let Store = require("./build/kubox.umd.js");
+let Store = require("./dist/kubox.js");
 
 test("create a simple counter to see if it modifies the state and notifies the subscriber", () => {
     let store = new Store();
