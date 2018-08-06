@@ -1,111 +1,126 @@
 # Kubox
 
-Es una pequeña herramienta creada para controlar el estado dentro de aplicaciones, sin aumentar la complejidad ofreciendo una cobertura tanto síncrona como asíncrona en tan solo **540 bytes gzip**
+Kubox es una alternativa a la forma de gestionar el estado a librerias como Redux, Mobx u otra. 
 
-## Introducción
+Como alternativa a redux ud no necesitara usar actionsTypes o reducers, ya que Kubox se centra solo en el uso de acciones, para la gestion del estado.
 
-### ¿Que es el estado?
+Ahora repasaremos algunos conceptos que se comparten en la mayoria de las librerias destinadas a la gestion del estado.
 
-El estado es un objeto, este posee la situación actual de lo que se desea observar, por ejemplo las interacciones de una aplicación.
+### El Estado
 
-### ¿Que es el store?
+El estado para Kubox es un objeto y este esta destinado a almacenar informacion a compartir mediante el uso **Store**.
 
-El store es la instancia de **kubox** esta enlaza el estado con los suscriptores y acciones.
+### El Store
+
+El Store permite gestionar el estado y dar acceso a el, ud puede aceder al estado mediante la propiedad **state** de la instancia del Store, si ud busca suscribirce a los cambios simplemente use el metodo **subscribe** de la instancia, este lo alertara de todos los cambios que proboquen las **acciones**
 
 
-### ¿Que es una acción?
+### Accion
 
-Para comenzar a trabajar con kubox, debe comprender bien el concepto de **action**.
+La accion es simplemente una funcion capas de comunicarce con el Store, la accion puede notificar cambios a los suscriptores. El estado dentro de Kubox, es inmutable, por lo que cada cambio genera un nuevo estado que remplaza el anterior.
 
-Una acción es una función que permite cambiar u obtener el estado del store, esta interacción puede ser sincrona o asincrona.
 
-Toda acción recibe como mínimo un argumento, el **primer parámetro lo define el store**, y le entrega a la acción en un objeto la capacidad ya comentada de modificar u obtener el estado mediante 2 funciones:
+## El Space
 
-* **set** : modifica el estado.
-* **get** : obtiene el estado.
+Este ultimo punto es propio de Kubox y es lo que lo define como diferente, Kubox controla los contextos dados para cada accion. esto lo hace mediante el uso de indices de espacio, este solo afecta a las acciones, no al estado en si.
 
-```javascript
-function action({set,get}){
-   set({state:"sync change"});
+### Ejemplo 
 
-   setTimeout(()=>{
-       set({state:"async change"})
-   })
+Si poseyeramos el siguiente arbol de acciones.
+
+```js
+export default {
+    count : {
+        add({set,get}){
+            set(get()+1)
+        },
+        sub({set,get}){
+            set(get()-1)
+        }
+    }   
 }
 ```
 
-### ¿Que es el middleware?
-
-El middleware es solo una función que permite interceder los cambios enviados por las acciones.
+Kubox limitaria el contexto de cada accion solo a acceder a la propiedad count. la ventaja de esto es que tus acciones son componenitables.
 
 
+```js
+
+function add({set,get}){
+    set(get()+1)
+}
+
+function sub({set,get}){
+    set(get()-1)
+}
+
+export default {
+    count1 : {add,res},   
+    count2 : {add,res},   
+    count3 : {add,res},   
+}
+
+```
+
+> Kubox asigna el indice al que pertenece la accion como un contexto, esto dentro de kubox se llama **space**
+
+> otro punto importante de esto es que las acciones por mas anidadas que sean poseeran un espacio de un solo indice.
 
 
-## Métodos y propiedades
+```js
 
-### Store([object state, object actions, function middleware])
+function add({set,get}){
+    set(get()+1)
+}
 
-La instancia del **Store**, puede recibir hasta 3 argumentos
+function sub({set,get}){
+    set(get()-1)
+}
 
-1. **state** : *{object}*, estado inicial para el store.
-2. **actions** : *{object}*, acciones modificadoras del estado.
-2. **middleware** : *{function}*, controla los cambios provocados por las acciones
+export default {
+    count : {
+        add,sub,
+        child : {add,sub}
+    }
+}
+```
 
+> por ejemplo para acceder a al accion **count.child.add** ud debera usar el metodo dentro de accions **actions.countChildAdd**, de igual forma si ud quiere conocer el  estado controlado por esa accion debera acceder a la propiedad **state.countChild**, esto no afecta al valor asignado al space, por lo que us valor puede ser un objeto con mayor profundidad.
 
-``` javascript
+## Instancia
+
+La funcion **Store**, resive los 3 parametros ya explicados:
+
+1. EL estado : {object}, este es el estado inicial de Store.
+2. Las acciones : {object}, estas son las acciones del Store.
+3. El middleware : {function}, este permite observar los cambios que probocas las acciones.
+
+```js
 import Store from "kubox";
 
-let state = {
-   task : []
+function add({set,get}){
+    set(get()+1)
+}
+
+function sub({set,get}){
+    set(get()-1)
 }
 
 let actions = {
-   task : {
-       create({set,get},value){
-           set(
-               get().concat(value)
-           );
-       },
-       remove({set,get},index){
-           set(
-               get().filter((value,indexSearch)=>indexSearch !== index)
-           );
-       }
-   }
+    count : {add,sub}
 }
+
+let state = {count : 0}
 
 let store = new Store(state,actions);
 
-store.actions.createTask("hello!");
-
-store.state.task // ["hello!"];
-
+store.actions.countAdd(); 
+console.log(store.state.count); // 1;
+store.actions.countSub(); 
+console.log(store.state.count); // 0;
 ```
-> Favor note que las acciones se encuentran anidadas en una propiedad esta propiedad **task** esta será el **space**, esto quiere decir que las acciones solo verán y modifican el estado desde la propiedad space.
 
-> El store de forma arbitraria define los nombres de las acciones a registrar usando el patrón **camel case**, anteponiendo el nombre de la función al origen de la propiedad.
 
-La instancia del **Store** retorna las siguientes propiedades
 
-* **state** : {object}, estado del store.
-* **actions** : {object}, acciones registradas en el store.
-* **handlers** : {object}, agrupación de suscriptores.
-* **setActions** : {function}, crea o modifica acciones al store.
-* **subscribe** : {function}, añade un suscriptor al store
 
-### setActions( object actions [, function middleware, string space])
 
-Esta función crear o modificar acciones en el store, recibe 3 argumentos :
-
-* **actions** : {object}, grupo de funciones a definir como acciones dentro del store
-* **middleware** : [function], función a interceder los cambios generados por las acciones
-* **space** : [string], nombre de espacio para las acciones.
-
-### subscribe( function handler[, string  space]) : function unsubscribe
-
-Esta función añade suscriptores al store, recibe 2 argumentos:
-
-* **handler** : {function}, función que se le notificarán los cambios
-* **space** : [string], string que permite suscribirse solo a los cambios generados por acciones vinculadas al **space**
-
-## Ejemplos

@@ -34,57 +34,42 @@ export default class Store {
      */
     setActions(actions, middleware, space = "") {
         let group = ["*"].concat(space),
-            set = state => {
+            set = space => state => {
                 this.state = space ? { ...this.state, [space]: state } : state;
                 group.forEach(prop =>
                     (this.handlers[prop] || []).forEach(handler =>
                         handler(this.state, prop)
                     )
                 );
-                return get();
+                return this.state;
             },
-            get = () => (space ? this.state[space] : this.state);
+            get = space => () => (space ? this.state[space] : this.state);
 
         for (let prop in actions) {
             let action = actions[prop],
-                aliasAction = space ? toCamelCase(prop + " " + space) : prop,
-                aliasSpace = space ? toCamelCase(space + " " + prop) : prop;
+                alias = space ? toCamelCase(space + " " + prop) : prop;
             if (typeof action === "object") {
-                this.setActions(action, middleware, aliasSpace);
+                this.setActions(action, middleware, alias);
             } else {
                 let state = {
                     set: middleware
                         ? state =>
-                              /**
-                               *  @param {object} arguments[0] - The first argument of the middleware
-                               * is the set and get non-blocking
-                               *  @param {function} arguments[0].set - updates and notifies subscribers
-                               * of said update
-                               *  @param {function} arguments[0].get - get the current status
-                               *  @param {object} arguments[1] - the second argument is a record of the
-                               * action that the store tries to update
-                               *  @param {object} arguments[1].state - the status update sent by the action
-                               *  @param {string} arguments[1].action - name of the action that executes
-                               * the change
-                               *  @param {string} arguments[1].space - Namespace of the action if the
-                               * change points only to one property
-                               */
                               middleware(
-                                  { set, get },
+                                  { set: set(), get: get() },
                                   {
                                       state,
-                                      action: aliasAction,
-                                      space: aliasSpace
+                                      action: alias,
+                                      space
                                   }
                               )
-                        : set,
-                    get
+                        : set(space),
+                    get: get(space)
                 };
                 /**
                  * Create a function that creates access to the store for the action,
                  * this in turn transfers the arguments given to the action
                  */
-                this.actions[aliasAction] = (...args) => action(state, ...args);
+                this.actions[alias] = (...args) => action(state, ...args);
             }
         }
     }
