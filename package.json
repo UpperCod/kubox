@@ -1,6 +1,6 @@
 {
   "name": "kubox",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "state management solution for Javascript applications",
   "main": "dist/kubox.js",
   "umd:main": "dist/kubox.umd.js",
@@ -8,7 +8,8 @@
   "source": "src/index.js",
   "scripts": {
     "test": "jest",
-    "prepublish": "jest"
+    "prepublish": "jest",
+    "build" : "microbundle"
   },
   "author": "Matias Trujillo Olivares",
   "license": "ISC",
