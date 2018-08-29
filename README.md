@@ -1,105 +1,155 @@
 # Kubox
 
-It is a small tool created to control the status within applications, without increasing complexity by offering both synchronous and asynchronous coverage in only **540 bytes gzip**
+Kubox, is a small (<600bytes gzip) state manager, such as **Redux**, **Mobx** or another library.
 
-## Introduction
-
-### What is the state?
-
-The state is an object, this has the current situation of what you want to observe, for example the interactions of an application.
-
-### What is the store?
-
-The blind is the instance of **kubox** this links the state with the subscribers and actions.
+Kubox manages the state based on **namespace**, these are created from an object of actions, Kubox maps this object and obtains **namespace** based on the properties that this object possesses, the The purpose of these **namespace** is to limit the scope of the actions only to the **namespace**.
 
 
-### What is an action?
+```js
+import Store from "kubox";
+// The root state must always be an object.
+let state = {countOne : 0, countTwo:0};
+// This function only knows the state scope assigned by kubox.
+let add = (state) => state.set( state.get() + 1 );
 
-To start working with kubox, you must understand the concept of **action** well.
+let state = new Store(state,{
+   count : {
+       // The namespace of this action is countOne
+       one : {add},
+       // The namespace of this action is countTwo
+       two : {add}
+   }
+});
+/**
+* The action is stored in:
+* state.actions.<namespace>.<action>
+*/
+state.actions.countOne.add(); // {countOne: 1,countTwo: 0}
+state.actions.countTwo.add(); // {countOne: 1,countTwo: 1}
+```
+ 
 
-An action is a function that allows to change or obtain the state of the store, this interaction can be synchronous or asynchronous.
+In the previous example it is taught as **Kubox**, it limits the depth of the state it receives from each existing action based on the **namespace**.
 
-Every action receives at least one argument, the **first parameter is defined by the store**, and gives the action in an object the aforementioned ability to modify or obtain the status through 2 functions:
 
-* **set** : modify the state.
-* **get** : get the status.
+## Namespace
+
+Kubox manages the state based on **namespace**, an action will always receive by kubox as the first argument an object with 2 methods, these methods allow to interact with the state either by root or associated only to the context given by the **namespace**.
+
+* set: This method allows you to modify the status.
+* get: This method allows you to obtain the status.
+
+### Get
+
+The use of `get` allows to obtain the current state
 
 ```javascript
-function action({set,get}){
-   set({state:"sync change"});
+export function add(state){
+   state.get()
+}
+```
 
-   setTimeout(()=>{
-       set({state:"async change"})
+
+### Set
+
+The use of `set` allows you to generate a new state, if you want to go from a **A** state to a **B** state, just define the **B** state by using `set(B)`.
+
+```javascript
+export function add(state){
+   state.set(
+           state.get() + 1
+   )
+}
+```
+
+
+> The functions created with this argument format are highly reusable.
+
+
+### Arguments
+
+Every action can receive more than one argument.
+
+```javascript
+export function sum(state,a, b){
+   state.set(a+b)
+}
+
+store.actions.total.sum(100,100) // {count:200}
+```
+
+
+## Subscribers
+
+All the change of state is announced to the subscribers, for this you must use the method of the instance `store.subscribe`.
+
+```javascript
+import Store from "kubox"
+
+let store = new Store({})
+
+store.subscribe((state)=>{
+   console.log(state)
+})
+```
+
+
+### Directed subscription
+
+By default the subscriber hears all the changes, but you can focus this listening to only the actions of a given **namespace**.
+
+```javascript
+store.subscribe((state)=>{
+   console.log(state)
+},"count")
+```
+
+
+> The taught subscriber will only hear the changes associated with the actions that belong to the namespace **count**
+
+
+## Middleware
+
+Any action can be seen in the attempted modification by the middleware. This receives 2 arguments:
+
+1. state: {object}, this has the ** set ** and ** get ** methods.
+2. change: {object}, this has a detail of who tries to generate the change.
+   * space: {string}, alias for the ** space name **
+   * action: {string}, name of the action that executes the `set` method.
+   * state: {any}, argument given to the `set` method, for the state update.
+
+```javascript
+import Store from "kubox"
+import state from "./state.js";
+import actions from "./actions.js";
+
+function middlewareLog(state,change){
+   console.log({
+       prev : state.get()
+   });
+   state.set({
+       ...state.get(),
+       [change.space] : change.state
    })
+   console.log({
+       next : state.get()
+   });
 }
+
+let store = new Store(state,actions)
+
+store.subscribe((state)=>{
+   console.log(state)
+})
 ```
 
-### What is middleware?
 
-The middleware is only a function that allows to intercede the changes sent by the actions.
-
-## Methods and properties
-
-### Store([object state, object actions, function middleware])
-
-The **Store** instance, can receive up to 3 arguments.
-
-1. **state** : *{object}*, initial state for the store.
-2. **actions** : *{object}*, state modifying actions.
-2. **middleware** : *{function}*, controls the changes caused by the actions.
+> The middleware has absolute control over the definition of the state.
 
 
-``` javascript
-import Store from "kubox";
+## Utilities
 
-let state = {
-   task : []
-}
-
-let actions = {
-   task : {
-       create({set,get},value){
-           set(
-               get().concat(value)
-           );
-       },
-       remove({set,get},index){
-           set(
-               get().filter((value,indexSearch)=>indexSearch !== index)
-           );
-       }
-   }
-}
-
-let store = new Store(state,actions);
-
-store.actions.taskCreate("hello!");
-
-store.state.task // ["hello!"];
-
-```
-
-The **Store** instance returns the following properties
-
-* **state** : {object}, state of the store.
-* **actions** : {object}, actions registered in the store.
-* **handlers** : {object}, grouping of subscribers.
-* **setActions** : {function}, create or modify actions to the store.
-* **subscribe** : {function}, add a subscriber to the store.
-
-### setActions( object actions [, function middleware, string space])
-
-This function creates or modifies actions in the store, receives 3 arguments:
-
-* **actions** : {object}, group of functions to be defined as actions within the store.
-* **middleware** : [function], function to intercede the changes generated by the actions.
-* **space** : [string], name of space for actions.
-
-### subscribe( function handler[, string  space]) : function unsubscribe
-
-This function adds subscribers to the store, receives 2 arguments:
-
-* **handler** : {function}, function that is notified of the changes.
-* **space** : [string], string that allows subscribing only to the changes generated by actions linked to **space**
-
-
+|Libreria | Npm | Github |
+|:--------|:----|:-------|
+| kubox-preact | [Link](https://www.npmjs.com/package/kubox-preact) | [Link](https://github.com/UpperCod/kubox-preact) | 
+| kubox-react | [Link](https://www.npmjs.com/package/kubox-react) | [Link](https://github.com/UpperCod/kubox-react) | 

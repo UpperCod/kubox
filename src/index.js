@@ -4,7 +4,7 @@
  * @return {string} string with the change already applied
  */
 function toCamelCase(string) {
-    return string.replace(/[\s\t\n\-\_]+(\w)/g, (all, letter) =>
+    return string.replace(/[^\w\_]+(\w)/g, (all, letter) =>
         letter.toUpperCase()
     );
 }
@@ -19,11 +19,11 @@ export default class Store {
      * @param {object} [actions] - initial actions of the store
      * @param {function} [middleware] - middleware for initial actions
      */
-    constructor(state = {}, actions = {}, middleware) {
-        this.state = state;
+    constructor(state, actions, middleware) {
+        this.state = state || {};
         this.actions = {};
         this.handlers = {};
-        this.setActions(actions, middleware);
+        this.setActions(actions, (this.middleware = middleware));
     }
     /**
      * This function creates a set and get context to execute within each action
@@ -33,23 +33,38 @@ export default class Store {
      * @param {string} [space] - namespace of actions
      */
     setActions(actions, middleware, space = "") {
-        let group = ["*"].concat(space),
+        middleware = middleware || this.middleware;
+
+        let use = this.actions,
+            notify = ["*"].concat(space),
             set = space => state => {
                 this.state = space ? { ...this.state, [space]: state } : state;
-                group.forEach(prop =>
-                    (this.handlers[prop] || []).forEach(handler =>
-                        handler(this.state, prop)
-                    )
-                );
+                notify.forEach(space => {
+                    (this.handlers[space] || []).forEach(handler =>
+                        handler(this.state, space)
+                    );
+                });
                 return this.state;
             },
-            get = space => () => (space ? this.state[space] : this.state);
+            get = space => fn => {
+                let state = space ? this.state[space] : this.state;
+                return typeof fn === "function"
+                    ? fn(state)
+                    : state !== undefined
+                        ? state
+                        : fn;
+            };
+
+        if (space) use = use[space] || (use[space] = {});
 
         for (let prop in actions) {
-            let action = actions[prop],
-                alias = space ? toCamelCase(space + " " + prop) : prop;
+            let action = actions[prop];
             if (typeof action === "object") {
-                this.setActions(action, middleware, alias);
+                this.setActions(
+                    action,
+                    middleware,
+                    space ? toCamelCase(space + " " + prop) : prop
+                );
             } else {
                 let state = {
                     set: middleware
@@ -57,19 +72,15 @@ export default class Store {
                               middleware(
                                   { set: set(), get: get() },
                                   {
-                                      state,
-                                      action: alias,
-                                      space
+                                      space,
+                                      action: prop,
+                                      state
                                   }
                               )
                         : set(space),
                     get: get(space)
                 };
-                /**
-                 * Create a function that creates access to the store for the action,
-                 * this in turn transfers the arguments given to the action
-                 */
-                this.actions[alias] = (...args) => action(state, ...args);
+                use[prop] = (...args) => action(state, ...args);
             }
         }
     }

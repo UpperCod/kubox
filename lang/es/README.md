@@ -1,126 +1,174 @@
 # Kubox
 
-Kubox es una alternativa a la forma de gestionar el estado a librerias como Redux, Mobx u otra. 
+Kubox, es un pequeño(<600bytes gzip) administrador de estados, como lo es Redux, Mobx u otra librería.
 
-Como alternativa a redux ud no necesitara usar actionsTypes o reducers, ya que Kubox se centra solo en el uso de acciones, para la gestion del estado.
-
-Ahora repasaremos algunos conceptos que se comparten en la mayoria de las librerias destinadas a la gestion del estado.
-
-### El Estado
-
-El estado para Kubox es un objeto y este esta destinado a almacenar informacion a compartir mediante el uso **Store**.
-
-### El Store
-
-El Store permite gestionar el estado y dar acceso a el, ud puede aceder al estado mediante la propiedad **state** de la instancia del Store, si ud busca suscribirce a los cambios simplemente use el metodo **subscribe** de la instancia, este lo alertara de todos los cambios que proboquen las **acciones**
+Lo que lo hace particular es la forma en la que gestiona el estado a base de **nombre de espacio**, estos se crean a partir de un objeto de acciones, Kubox mapea este objeto y obtiene los  **nombre de espacio** a base de las propiedades que este objeto posea, el objetivo de estos **nombre de espacio** es limitar el alcance a conocer por las acciones sólo al **nombre de espacio**.
 
 
-### Accion
-
-La accion es simplemente una funcion capas de comunicarce con el Store, la accion puede notificar cambios a los suscriptores. El estado dentro de Kubox, es inmutable, por lo que cada cambio genera un nuevo estado que remplaza el anterior.
-
-
-## El Space
-
-Este ultimo punto es propio de Kubox y es lo que lo define como diferente, Kubox controla los contextos dados para cada accion. esto lo hace mediante el uso de indices de espacio, este solo afecta a las acciones, no al estado en si.
-
-### Ejemplo 
-
-Si poseyeramos el siguiente arbol de acciones.
-
-```js
-export default {
-    count : {
-        add({set,get}){
-            set(get()+1)
-        },
-        sub({set,get}){
-            set(get()-1)
-        }
-    }   
-}
-```
-
-Kubox limitaria el contexto de cada accion solo a acceder a la propiedad count. la ventaja de esto es que tus acciones son componenitables.
-
-
-```js
-
-function add({set,get}){
-    set(get()+1)
-}
-
-function sub({set,get}){
-    set(get()-1)
-}
-
-export default {
-    count1 : {add,res},   
-    count2 : {add,res},   
-    count3 : {add,res},   
-}
-
-```
-
-> Kubox asigna el indice al que pertenece la accion como un contexto, esto dentro de kubox se llama **space**
-
-> otro punto importante de esto es que las acciones por mas anidadas que sean poseeran un espacio de un solo indice.
-
-
-```js
-
-function add({set,get}){
-    set(get()+1)
-}
-
-function sub({set,get}){
-    set(get()-1)
-}
-
-export default {
-    count : {
-        add,sub,
-        child : {add,sub}
-    }
-}
-```
-
-> por ejemplo para acceder a al accion **count.child.add** ud debera usar el metodo dentro de accions **actions.countChildAdd**, de igual forma si ud quiere conocer el  estado controlado por esa accion debera acceder a la propiedad **state.countChild**, esto no afecta al valor asignado al space, por lo que us valor puede ser un objeto con mayor profundidad.
-
-## Instancia
-
-La funcion **Store**, resive los 3 parametros ya explicados:
-
-1. EL estado : {object}, este es el estado inicial de Store.
-2. Las acciones : {object}, estas son las acciones del Store.
-3. El middleware : {function}, este permite observar los cambios que probocas las acciones.
 
 ```js
 import Store from "kubox";
+// El estado de raíz siempre debe ser un objeto.
+let state = {countOne : 0, countTwo:0};
+// Esta función sólo conocerá como alcance de estado el que le asigne kubox.
+let add = (state) => state.set( state.get() + 1 );
 
-function add({set,get}){
-    set(get()+1)
+let state = new Store(state,{
+   count : {
+       // El nombre de espacio de esta acción es countOne
+       one : {add},
+       // El nombre de espacio de esta acción es countTwo
+       two : {add}
+   }
+});
+/**
+* La acción queda almacenada en:
+* state.actions.<namespace>.<action>
+*/
+state.actions.countOne.add(); // {countOne: 1,countTwo: 0}
+state.actions.countTwo.add(); // {countOne: 1,countTwo: 1}
+```
+
+
+
+En el ejemplo anterior se enseña como **Kubox**, limita la profundidad del estado que recibe de cada acción existente a base del **nombre de espacio**.
+
+
+
+## Nombres de espacio(Namespace)
+
+Kubox gestiona el estado a base de **nombres de espacio**, una acción recibirá siempre por parte de kubox como primer argumento un objeto con 2 métodos, estos métodos permiten interactuar con el estado sea de raíz o asociado solo al contexto dado por los **nombres de espacio**
+
+* set : Este método permite modificar el estado
+* get : Este método permite obtener el estado.
+
+### Get 
+
+El uso de `get` permite obtener el estado actual
+
+```javascript
+export function add(state){
+   state.get()
 }
+```
 
-function sub({set,get}){
-    set(get()-1)
+
+
+### Set
+
+El uso de `set` permite generar un nuevo estado,  si ud quiera pasar de un estado **A** a un estado **B** solo defina el estado **B** mediante el uso de `set(B)`.
+
+
+
+```javascript
+export function add(state){
+   state.set(
+           state.get() + 1
+   )
 }
-
-let actions = {
-    count : {add,sub}
-}
-
-let state = {count : 0}
-
-let store = new Store(state,actions);
-
-store.actions.countAdd(); 
-console.log(store.state.count); // 1;
-store.actions.countSub(); 
-console.log(store.state.count); // 0;
 ```
 
 
 
 
 
+> Las funciones creadas con este formato de argumentos son altamente reutilizables.
+
+
+
+### Argumentos
+
+Toda acción puede recibir más de un argumento.
+
+```javascript
+export function sum(state,a, b){
+   state.set(a+b)
+}
+
+store.actions.total.sum(100,100) // {count:200}
+```
+
+
+
+## Suscriptores
+
+Todo cambio de estado es anunciado a los suscriptores, para ello debe usar el método de la instancia `store.subscribe`.
+
+
+
+```javascript
+import Store from "kubox"
+
+let store = new Store({})
+
+store.subscribe((state)=>{
+   console.log(state)
+})
+```
+
+
+
+### Suscripción direccionada
+
+Por defecto el suscriptor escucha todos los cambios, pero ud puede focalizar esta escucha a un solo a las acciones de un determinado  **Nombre de espacio**.
+
+
+
+```javascript
+store.subscribe((state)=>{
+   console.log(state)
+},"count")
+```
+
+
+
+> El suscriptor enseñado solo escuchara los cambios asociados a las acciones que pertenezcan al namespace **count**
+
+
+
+## Middleware
+
+Toda acción puede ser vista en el intento de modificación por el middleware. este recibe 2 argumentos :
+
+1. state : {object}, este posee los métodos **set** y **get**.
+2. change: {object}, este posee un detalle de quien intenta generar el cambio.
+  * space : {string} , alias para el **nombre de espacio**
+  * action : {string}, nombre de la acción que ejecuta el método `set`.
+  * state : {any}, argumento dado al método `set`, para la actualización de estado.
+
+```javascript
+import Store from "kubox"
+import state from "./state.js";
+import actions from "./actions.js";
+
+function middlewareLog(state,change){
+   console.log({
+       prev : state.get()
+   });
+   state.set({
+       ...state.get(),
+       [change.space] : change.state
+   })
+   console.log({
+       next : state.get()
+   });
+}
+
+let store = new Store(state,actions)
+
+store.subscribe((state)=>{
+   console.log(state)
+})
+```
+
+
+
+> El middleware posee control absoluto sobre la definicion del estado.
+
+
+## Utilidades
+
+|Libreria | Npm | Github |
+|:--------|:----|:-------|
+| kubox-preact | [Link](https://www.npmjs.com/package/kubox-preact) | [Link](https://github.com/UpperCod/kubox-preact) | 
+| kubox-react | [Link](https://www.npmjs.com/package/kubox-react) | [Link](https://github.com/UpperCod/kubox-react) | 

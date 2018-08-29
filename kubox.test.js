@@ -1,24 +1,49 @@
 let Store = require("./dist/kubox.js");
 
-test("create a simple counter to see if it modifies the state and notifies the subscriber", () => {
-    let store = new Store({
-        count: 0
-    });
-
-    store.setActions({
-        count: {
-            increment(state) {
-                state.set(state.get() + 1);
+describe("Test group 1, shallow object depth", () => {
+    test("1: Simple store", () => {
+        let state = { count: 0 },
+            actions = {
+                count: {
+                    increment(state) {
+                        state.set(state.get() + 1);
+                    },
+                    decrement(state) {
+                        state.set(state.get() - 1);
+                    }
+                }
             },
-            decrement(state) {
-                state.set(state.get() - 1);
-            }
-        }
-    });
+            store = new Store(state, actions);
 
-    store.subscribe(({ count }) => {
-        expect(count).toBe(1);
-    });
+        store.subscribe(({ count }) => {
+            expect(count).toBe(1);
+        });
 
-    store.actions.countIncrement();
+        store.actions.count.increment();
+    });
+    test("2: Simple store with deep namespace", () => {
+        let state = { count: 0 },
+            calc = {
+                increment(state) {
+                    state.set(state.get(0) + 1);
+                },
+                decrement(state) {
+                    state.set(state.get(0) - 1);
+                }
+            },
+            actions = {
+                count: {
+                    ...calc,
+                    deep: calc
+                }
+            },
+            store = new Store(state, actions);
+
+        store.subscribe(({ count }) => {
+            expect(count).toBe(1);
+        });
+
+        store.actions.count.increment();
+        store.actions.countDeep.increment();
+    });
 });

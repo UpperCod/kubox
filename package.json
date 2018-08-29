@@ -1,6 +1,6 @@
 {
   "name": "kubox",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "state management solution for Javascript applications",
   "main": "dist/kubox.js",
   "umd:main": "dist/kubox.umd.js",

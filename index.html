@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="./dist/kubox.umd.js"></script>
+    <script>
+    
+         let state = { count: 0 },
+            actions = {
+                count: {
+                    increment(state) {
+                        state.set(state.get() + 1);
+                    },
+                    decrement(state) {
+                        state.set(state.get() - 1);
+                    }
+                }
+            },
+            store = new kubox(state, actions);
+
+        store.subscribe(({ count }) => {
+            console.log(count)
+        });
+
+        store.actions.count.increment();
+
+    </script>
+</head>
+<body>
+    
+</body>
+</html>
